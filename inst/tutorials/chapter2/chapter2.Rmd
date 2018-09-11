@@ -73,11 +73,26 @@ Water9 <-
   )  
 ```
 
-Feel free to check out the `Water9` data frame below:
-
-```{r ex2.3a, exercise = TRUE}
-Water9
+```{r prepare-ex2.3a}
+Water9 <-
+  data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %>% 
+  mutate(
+    unstd.prior = 1,                        # recycles automatically
+    prior = unstd.prior / sum(unstd.prior), # standardize the prior
+    likelihood =  dbinom(6, size = 9, prob = p),
+    unstd.posterior = likelihood * prior,
+    posterior = unstd.posterior / sum(unstd.posterior),
+    posterior.dens = posterior / 0.001
+  )  
 ```
+
+```{r ex2.3a, exercise = TRUE, exercise.setup = 'prepare-ex2.3a'}
+# Explore water9
+```
+
+
+Feel free to check out the `Water9` data frame above.
+
 
 Remarks:
 
@@ -138,7 +153,7 @@ Remarks:
 
 R code chunk 2.5 shows two alternative unstandardized prior distributions to consider. My version of the code is given below. Feel free to explore the data frames to see the differences
 
-```{r, chunk2.5a}
+```{r chunk2.5a}
 Water9a <-
   data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %>% 
   mutate(
@@ -159,12 +174,38 @@ Water9b <-
     unstd.posterior = likelihood * prior,
     posterior = unstd.posterior / sum(unstd.posterior),
     posterior.dens = posterior / 0.001
-  )  
+  ) 
 ```
 
-```{r ex2.5a, exercise = TRUE}
+```{r prepare-2.5a}
+Water9a <-
+  data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %>% 
+  mutate(
+    unstd.prior = ifelse(p < 0.5, 0, 1),
+    prior = unstd.prior / sum(unstd.prior), # standardize the prior
+    likelihood =  dbinom(6, size = 9, prob = p),
+    unstd.posterior = likelihood * prior,
+    posterior = unstd.posterior / sum(unstd.posterior),
+    posterior.dens = posterior / 0.001
+  )
+
+Water9b <-
+  data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %>% 
+  mutate(
+    unstd.prior =  exp(-5 * abs(p - 0.5)),
+    prior = unstd.prior / sum(unstd.prior), # standardize the prior
+    likelihood =  dbinom(6, size = 9, prob = p),
+    unstd.posterior = likelihood * prior,
+    posterior = unstd.posterior / sum(unstd.posterior),
+    posterior.dens = posterior / 0.001
+  ) 
+```
+
+
+```{r ex2.5a, exercise = TRUE, exercise.setup = "prepare-2.5a"}
 # Explore the two new data frames
 ```
+
 
 
 ## 2.4.2 Quadratic approximation
