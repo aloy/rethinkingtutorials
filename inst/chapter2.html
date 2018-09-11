@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="author" content="Adam Loy, Math 315" />
+
+
+<meta name="progressive" content="true" />
+<meta name="allow-skip" content="true" />
+
+<title>Alternative R Code to Statistical Rethinking: Chapter 2</title>
+
+
+<!-- highlightjs -->
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+
+
+<div class="pageContent band">
+<div class="bandContent page">
+
+<div class="topics">
+
+<div id="section-overview" class="section level2">
+<h2>Overview</h2>
+<p>This web app provides alternative code for each code chunk presented in <em>Statistical Rethinking</em> by Richard McElreath. Many of the chunks have been adapted from Randy Pruim’s <a href="https://github.com/rpruim/Statistical-Rethinking">github repo</a>. The main idea is to present tidier code with preference for</p>
+<ul>
+<li>related data be in containers (lists, data frames, etc.) rather than in “loose vectors”.</li>
+<li>not using the same names over and over for different things.</li>
+<li>using <code>ggplot2</code> for graphics.</li>
+</ul>
+<p>Note: I have used the R code chunk numbering scheme that appears in the textbook to organize the code.</p>
+</div>
+<div id="section-from-counts-to-probability" class="section level2">
+<h2>2.1.3 From counts to probability</h2>
+<div id="section-r-code-2.1" class="section level4">
+<h4>R code 2.1</h4>
+<p>There is no need to change the code to compute the probabilities (i.e. plausibilities).</p>
+<pre class="r"><code>ways &lt;- c(0, 3, 8, 9, 0)
+ways / sum(ways)</code></pre>
+<pre><code>## [1] 0.00 0.15 0.40 0.45 0.00</code></pre>
+</div>
+</div>
+<div id="section-components-of-the-model" class="section level2">
+<h2>2.3 Components of the model</h2>
+<div id="section-r-code-2.2" class="section level4">
+<h4>R code 2.2</h4>
+<p>There is no need for a change here. Distribution functions of the form <code>d*()</code> calculate the mass or density value (depending on whether you’re working with a PMF or PDF). If you’re ever in doubt, look at the help files. To see all of the distributions implemented without the need for add-on packages, type <code>?Distributions</code> into the console.</p>
+<pre class="r"><code>dbinom(6, size = 9, prob = 0.5)</code></pre>
+<pre><code>## [1] 0.1640625</code></pre>
+</div>
+</div>
+<div id="section-grid-approximation" class="section level2">
+<h2>2.4.1 Grid approximation</h2>
+<div id="section-r-code-2.3" class="section level4">
+<h4>R code 2.3</h4>
+<p>The author constantly recycles object names, such as <code>prior</code>, <code>likelihood</code>, and <code>unstd.posterior</code>. This can cause problems if you don’t start with a fresh work space for each assignments/project. In my opinion, it’s better to create data frames to store these results. This allows you to reuse column names, but to meaningfully name the results. Here, we name the results <code>Water9</code>.</p>
+<p>In the below code chunk we</p>
+<ul>
+<li>create a 20-point grid between 0 and 1,</li>
+<li>and use <code>mutate()</code> to add columns to the data frame consisting of this grid.</li>
+</ul>
+<pre class="r"><code>Water9 &lt;-
+  data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %&gt;% 
+  mutate(
+    unstd.prior = 1,                        # recycles automatically
+    prior = unstd.prior / sum(unstd.prior), # standardize the prior
+    likelihood =  dbinom(6, size = 9, prob = p),
+    unstd.posterior = likelihood * prior,
+    posterior = unstd.posterior / sum(unstd.posterior),
+    posterior.dens = posterior / 0.001
+  )  </code></pre>
+<p>Feel free to check out the <code>Water9</code> data frame below:</p>
+<div class="tutorial-exercise" data-label="ex2.3a" data-caption="Code" data-completion="1" data-diagnostics="1" data-startover="1" data-lines="0">
+<pre class="text"><code>Water9</code></pre>
+<script type="application/json" data-opts-chunk="1">{"fig.width":6.5,"fig.height":4,"fig.retina":2,"fig.align":"default","fig.keep":"high","fig.show":"asis","out.width":624,"warning":true,"error":false,"message":true,"exercise.df_print":"paged","exercise.timelimit":60,"exercise.checker":"NULL"}</script>
+</div>
+<p>Remarks:</p>
+<ul>
+<li><p>The function <code>data_frame()</code> is just like <code>data.frame()</code> that you are probably familiar with, but creates a tibble object that is commonly used in <code>tidyverse</code> packages. Check out <code>?tibble</code> for the specifics if you’re interested.</p></li>
+<li><p><code>%&gt;%</code> is the forward pipe operator. It allows you to avoid nesting functions by allowing an intermediate result (left of the <code>%&gt;%</code>) to become the first argument of the next function (right of the <code>%&gt;%</code>). Here, we pass the data frame into <code>mutate()</code>. If you’re new to the chaining syntax this will seem a bit weird, but it ultimately leads to more-readable code in your analyses.</p></li>
+</ul>
+</div>
+<div id="section-r-code-2.4" class="section level4">
+<h4>R code 2.4</h4>
+<p>I use <code>ggplot2</code> to create graphics in my analyses, and I believe in teaching the tools that I would use. It’s OK if you want to use the base graphics presented in the book.</p>
+<p>Using <code>ggplot2</code>, plots are created in layers (notice that layers are added using the <code>+</code> operator):</p>
+<ul>
+<li><p>The <code>ggplot()</code> command creates the base layer, or the plotting canvas. It expects you to provide the data frame where the variables exist (the data argument) and the names of the variables to be plotted (the mapping argument). The names of the variables will be entered into the <code>aes()</code> function as arguments where aes stands for “aesthetics”.</p></li>
+<li><p>Next, we add geometric layers that add marks to the canvas. Here, we connect the points in the data frame curve using <code>geom_line()</code>.</p></li>
+<li><p>We can change the axis labels and title by adding a <code>labs()</code> layer.</p></li>
+</ul>
+<pre class="r"><code>ggplot(data = Water9, aes(x = p, y = posterior)) +
+  geom_line() +
+  labs(x = &quot;probability of water&quot;, 
+       y = &quot;posterior probability&quot;, 
+       title = &quot;20 points&quot;)</code></pre>
+<p><img src="chapter2_files/figure-html/chunk2.4a-1.png" width="624" /></p>
+<p>Building a plot in layers allows you to easily add different types of markers to the same plot. For example, the below code plots the prior, likelihood, and posterior over the same grid of 20 points.</p>
+<pre class="r"><code>ggplot(data = Water9, aes(x = p)) +
+  geom_point(aes(y = posterior, color = &quot;posterior&quot;)) +
+  geom_line(aes( y = posterior, color = &quot;posterior&quot;)) +
+  geom_point(aes(y = prior, color = &quot;prior&quot;)) +
+  geom_line(aes( y = prior, color = &quot;prior&quot;)) +
+  geom_point(aes(y = likelihood, color = &quot;likelihood&quot;)) +
+  geom_line(aes( y = likelihood, color = &quot;likelihood&quot;)) +
+  labs(x = &quot;probability of water&quot;, 
+       y = &quot;posterior probability&quot;, 
+       title = &quot;20-point grid&quot;)</code></pre>
+<p><img src="chapter2_files/figure-html/chunk2.4b-1.png" width="624" /></p>
+<p>Remarks:</p>
+<ul>
+<li><p>We map the <code>p</code> column from <code>Water9</code> to the x-axis throughout each layer, so it can be defined in the base layer.</p></li>
+<li><p>Since we want to plot different distributions on the y-axis, we must map the desired column to the y-coordinate system within each layer.</p></li>
+</ul>
+</div>
+<div id="section-r-code-2.5" class="section level4">
+<h4>R code 2.5</h4>
+<p>R code chunk 2.5 shows two alternative unstandardized prior distributions to consider. My version of the code is given below. Feel free to explore the data frames to see the differences</p>
+<pre class="r"><code>Water9a &lt;-
+  data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %&gt;% 
+  mutate(
+    unstd.prior = ifelse(p &lt; 0.5, 0, 1),
+    prior = unstd.prior / sum(unstd.prior), # standardize the prior
+    likelihood =  dbinom(6, size = 9, prob = p),
+    unstd.posterior = likelihood * prior,
+    posterior = unstd.posterior / sum(unstd.posterior),
+    posterior.dens = posterior / 0.001
+  )
+
+Water9b &lt;-
+  data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %&gt;% 
+  mutate(
+    unstd.prior =  exp(-5 * abs(p - 0.5)),
+    prior = unstd.prior / sum(unstd.prior), # standardize the prior
+    likelihood =  dbinom(6, size = 9, prob = p),
+    unstd.posterior = likelihood * prior,
+    posterior = unstd.posterior / sum(unstd.posterior),
+    posterior.dens = posterior / 0.001
+  )  </code></pre>
+<div class="tutorial-exercise" data-label="ex2.5a" data-caption="Code" data-completion="1" data-diagnostics="1" data-startover="1" data-lines="0">
+<pre class="text"><code># Explore the two new data frames</code></pre>
+<script type="application/json" data-opts-chunk="1">{"fig.width":6.5,"fig.height":4,"fig.retina":2,"fig.align":"default","fig.keep":"high","fig.show":"asis","out.width":624,"warning":true,"error":false,"message":true,"exercise.df_print":"paged","exercise.timelimit":60,"exercise.checker":"NULL"}</script>
+</div>
+</div>
+</div>
+<div id="section-quadratic-approximation" class="section level2">
+<h2>2.4.2 Quadratic approximation</h2>
+<div id="section-r-code-2.6" class="section level4">
+<h4>R code 2.6</h4>
+<p>There’s no need for a change to this code chunk.</p>
+<pre class="r"><code>library(rethinking)
+globe.qa &lt;- 
+  map(alist(w ~ dbinom(9, p),  # binomial likelihood
+            p ~ dunif(0, 1)),  # uniform prior
+      data = list(w = 6))
+
+# display summary of quadratic approximation
+precis(globe.qa)</code></pre>
+<pre><code>##   Mean StdDev 5.5% 94.5%
+## p 0.67   0.16 0.42  0.92</code></pre>
+</div>
+<div id="section-r-code-2.7" class="section level4">
+<h4>R code 2.7</h4>
+<p>Below is code to compare the analytic posterior distribution, Beta(<span class="math inline">\(w+1\)</span>, <span class="math inline">\(n-w+1\)</span>), to the posterior obtained via quadratic approximation.</p>
+<p>Note: the dashed line represents the quadratic approximation.</p>
+<div class="tutorial-exercise" data-label="chunk2.7a" data-caption="Code" data-completion="1" data-diagnostics="1" data-startover="1" data-lines="0">
+<pre class="text"><code># analytical calculation
+w &lt;- 6
+n &lt;- 9
+p  &lt;- 0.67  # MAP (mean) value
+se &lt;- 0.16  # StdDev from above
+
+
+analytic &lt;- ggplot(data_frame(x = c(0, 1)), aes(x = x)) +
+  stat_function(fun = dbeta, 
+                args = list(shape1 = w + 1, shape2 = n - w + 1),
+                xlim = c(0, 1))
+
+# add the quadratic approximation
+analytic +
+  stat_function(fun = dnorm, 
+              args = list(mean = 0.67, sd = 0.16), 
+              xlim = c(0, 1),
+              linetype = 2)</code></pre>
+<script type="application/json" data-opts-chunk="1">{"fig.width":6.5,"fig.height":4,"fig.retina":2,"fig.align":"default","fig.keep":"high","fig.show":"asis","out.width":624,"warning":true,"error":false,"message":true,"exercise.df_print":"paged","exercise.timelimit":60,"exercise.checker":"NULL"}</script>
+</div>
+Change the values of <code>w</code> and <code>n</code> to produce different panels of Figure 2.8. Be sure to update the MAP value first, otherwise your approximation will look increasingly worse, not better! 
+<script type="application/shiny-prerendered" data-context="server-start">
+library(learnr)
+library(rethinking)
+library(dplyr)
+library(ggformula)
+knitr::opts_chunk$set(exercise.timelimit = 60)
+</script>
+ 
+<script type="application/shiny-prerendered" data-context="server">
+learnr:::register_http_handlers(session, metadata = NULL)
+</script>
+ 
+<script type="application/shiny-prerendered" data-context="server">
+`tutorial-exercise-ex2.3a-result` <- learnr:::setup_exercise_handler(reactive(req(input$`tutorial-exercise-ex2.3a-code-editor`)), session)
+output$`tutorial-exercise-ex2.3a-output` <- renderUI({
+  `tutorial-exercise-ex2.3a-result`()
+})
+</script>
+ 
+<script type="application/shiny-prerendered" data-context="server">
+`tutorial-exercise-ex2.5a-result` <- learnr:::setup_exercise_handler(reactive(req(input$`tutorial-exercise-ex2.5a-code-editor`)), session)
+output$`tutorial-exercise-ex2.5a-output` <- renderUI({
+  `tutorial-exercise-ex2.5a-result`()
+})
+</script>
+ 
+<script type="application/shiny-prerendered" data-context="server">
+`tutorial-exercise-chunk2.7a-result` <- learnr:::setup_exercise_handler(reactive(req(input$`tutorial-exercise-chunk2.7a-code-editor`)), session)
+output$`tutorial-exercise-chunk2.7a-output` <- renderUI({
+  `tutorial-exercise-chunk2.7a-result`()
+})
+</script>
+ <!--html_preserve-->
+<script type="application/shiny-prerendered" data-context="dependencies">
+{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["jquery"]},{"type":"character","attributes":{},"value":["1.11.3"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["rmd/h/jquery-1.11.3"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["jquery.min.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["rmarkdown"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["bootstrap"]},{"type":"character","attributes":{},"value":["3.3.5"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["rmd/h/bootstrap-3.3.5"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["viewport"]}},"value":[{"type":"character","attributes":{},"value":["width=device-width, initial-scale=1"]}]},{"type":"character","attributes":{},"value":["js/bootstrap.min.js","shim/html5shiv.min.js","shim/respond.min.js"]},{"type":"character","attributes":{},"value":["css/cerulean.min.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["rmarkdown"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["pagedtable"]},{"type":"character","attributes":{},"value":["1.1"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["rmd/h/pagedtable-1.1"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["js/pagedtable.js"]},{"type":"character","attributes":{},"value":["css/pagedtable.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["rmarkdown"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["highlightjs"]},{"type":"character","attributes":{},"value":["9.12.0"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["rmd/h/highlightjs"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["highlight.js"]},{"type":"character","attributes":{},"value":["textmate.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["rmarkdown"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["tutorial"]},{"type":"character","attributes":{},"value":["0.9.2.1"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/tutorial"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["tutorial.js"]},{"type":"character","attributes":{},"value":["tutorial.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["tutorial-autocompletion"]},{"type":"character","attributes":{},"value":["0.9.2.1"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/tutorial"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["tutorial-autocompletion.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["tutorial-diagnostics"]},{"type":"character","attributes":{},"value":["0.9.2.1"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/tutorial"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["tutorial-diagnostics.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["tutorial-format"]},{"type":"character","attributes":{},"value":["0.9.2.1"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["rmarkdown/templates/tutorial/resources"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["tutorial-format.js"]},{"type":"character","attributes":{},"value":["tutorial-format.css","rstudio-theme.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["jquery"]},{"type":"character","attributes":{},"value":["1.11.3"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["rmd/h/jquery-1.11.3"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["jquery.min.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["rmarkdown"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["font-awesome"]},{"type":"character","attributes":{},"value":["5.0.13"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["rmd/h/fontawesome"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["js/fontawesome-all.min.js","js/fa-v4-shims.min.js"]},{"type":"character","attributes":{},"value":["css/fa-svg-with-js.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["rmarkdown"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["bootbox"]},{"type":"character","attributes":{},"value":["4.4.0"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/bootbox"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["bootbox.min.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["localforage"]},{"type":"character","attributes":{},"value":["1.5"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/localforage"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["localforage.min.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["tutorial"]},{"type":"character","attributes":{},"value":["0.9.2.1"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/tutorial"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["tutorial.js"]},{"type":"character","attributes":{},"value":["tutorial.css"]},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["tutorial-autocompletion"]},{"type":"character","attributes":{},"value":["0.9.2.1"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/tutorial"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["tutorial-autocompletion.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["tutorial-diagnostics"]},{"type":"character","attributes":{},"value":["0.9.2.1"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/tutorial"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["tutorial-diagnostics.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["ace"]},{"type":"character","attributes":{},"value":["1.2.6"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/ace"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["ace.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["clipboardjs"]},{"type":"character","attributes":{},"value":["1.5.15"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/clipboardjs"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["clipboard.min.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["ace"]},{"type":"character","attributes":{},"value":["1.2.6"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/ace"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["ace.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["clipboardjs"]},{"type":"character","attributes":{},"value":["1.5.15"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/clipboardjs"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["clipboard.min.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["ace"]},{"type":"character","attributes":{},"value":["1.2.6"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/ace"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["ace.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name","version","src","meta","script","stylesheet","head","attachment","package","all_files"]},"class":{"type":"character","attributes":{},"value":["html_dependency"]}},"value":[{"type":"character","attributes":{},"value":["clipboardjs"]},{"type":"character","attributes":{},"value":["1.5.15"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["file"]}},"value":[{"type":"character","attributes":{},"value":["lib/clipboardjs"]}]},{"type":"NULL"},{"type":"character","attributes":{},"value":["clipboard.min.js"]},{"type":"NULL"},{"type":"NULL"},{"type":"NULL"},{"type":"character","attributes":{},"value":["learnr"]},{"type":"logical","attributes":{},"value":[true]}]}]}
+</script>
+<!--/html_preserve-->
+</div>
+</div>
+
+</div> <!-- topics -->
+
+<div class="topicsContainer">
+<div class="topicsPositioner">
+<div class="band">
+<div class="bandContent topicsListContainer">
+
+<!-- begin doc-metadata -->
+<div id="doc-metadata">
+<h2 class="title toc-ignore" style="display:none;">Alternative R Code to Statistical Rethinking: Chapter 2</h2>
+<h4 class="author"><em>Adam Loy, Math 315</em></h4>
+<h4 class="date"><em>Fall 2018</em></h4>
+</div>
+<!-- end doc-metadata -->
+
+</div> <!-- bandContent.topicsListContainer -->
+</div> <!-- band -->
+</div> <!-- topicsPositioner -->
+</div> <!-- topicsContainer -->
+
+
+</div> <!-- bandContent page -->
+</div> <!-- pageContent band -->
+
+
+
+
+<script>
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+</script>
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+
+</html>

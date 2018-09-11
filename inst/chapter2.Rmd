@@ -1,0 +1,216 @@
+---
+title: "Alternative R Code to Statistical Rethinking: Chapter 2"
+author: "Adam Loy, Math 315"
+date: "Fall 2018"
+output:
+  learnr::tutorial:
+    progressive: true
+    allow_skip: true
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(rethinking)
+library(dplyr)
+library(ggformula)
+knitr::opts_chunk$set(exercise.timelimit = 60)
+```
+
+## Overview
+
+This web app provides alternative code for each code chunk presented in *Statistical Rethinking* by Richard McElreath. Many of the chunks have been adapted from Randy Pruim's [github repo](https://github.com/rpruim/Statistical-Rethinking). The main idea is to present tidier code with preference for
+
+ * related data be in containers (lists, data frames, etc.) rather than in "loose vectors".
+ * not using the same names over and over for different things.
+ * using `ggplot2` for graphics.
+
+Note: I have used the R code chunk numbering scheme that appears in the textbook to organize the code.
+
+## 2.1.3 From counts to probability
+
+#### R code 2.1
+
+There is no need to change the code to compute the probabilities (i.e. plausibilities).
+
+```{r, chunk2.1}
+ways <- c(0, 3, 8, 9, 0)
+ways / sum(ways)
+```
+
+
+## 2.3 Components of the model
+
+#### R code 2.2
+
+There is no need for a change here. Distribution functions of the form `d*()` calculate the mass or density value (depending on whether you're working with a PMF or PDF). If you're ever in doubt, look at the help files. To see all of the distributions implemented without the need for add-on packages, type `?Distributions` into the console.
+
+```{r, chunk2.2}
+dbinom(6, size = 9, prob = 0.5)
+```
+
+## 2.4.1 Grid approximation
+
+#### R code 2.3 
+
+The author constantly recycles object names, such as `prior`, `likelihood`, and `unstd.posterior`. This can cause problems if you don't start with a fresh work space for each assignments/project. In my opinion, it's better to create data frames to store these results. This allows you to reuse column names, but to meaningfully name the results. Here, we name the results `Water9`.
+
+In the below code chunk we
+
+- create a 20-point grid between 0 and 1,
+- and use `mutate()` to add columns to the data frame consisting of this grid.
+
+```{r chunk2.3a}
+Water9 <-
+  data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %>% 
+  mutate(
+    unstd.prior = 1,                        # recycles automatically
+    prior = unstd.prior / sum(unstd.prior), # standardize the prior
+    likelihood =  dbinom(6, size = 9, prob = p),
+    unstd.posterior = likelihood * prior,
+    posterior = unstd.posterior / sum(unstd.posterior),
+    posterior.dens = posterior / 0.001
+  )  
+```
+
+Feel free to check out the `Water9` data frame below:
+
+```{r ex2.3a, exercise = TRUE}
+Water9
+```
+
+Remarks:
+
+- The function `data_frame()` is just like `data.frame()` that you are probably familiar with, but creates a tibble object that is commonly used in `tidyverse` packages. Check out `?tibble` for the specifics if you're interested.
+
+- `%>%` is the forward pipe operator. It allows you to avoid nesting functions by allowing an intermediate result (left of the `%>%`) to become the first argument of the next function (right of the `%>%`). Here, we pass the data frame into `mutate()`. If you're new to the chaining syntax this will seem a bit weird, but it ultimately leads to more-readable code in your analyses.
+
+
+
+#### R code 2.4 
+
+I use `ggplot2` to create graphics in my analyses, and I believe in teaching the tools that I would use. It's OK if you want to use the base graphics presented in the book.
+
+Using `ggplot2`, plots are created in layers (notice that layers are added using the `+` operator):
+
+- The `ggplot()` command creates the base layer, or the plotting canvas. It expects you to provide the data frame where the variables exist (the data argument) and
+the names of the variables to be plotted (the mapping argument). The names of the variables will be entered into the `aes()` function as arguments where aes stands for "aesthetics".
+
+- Next, we add geometric layers that add marks to the canvas. Here, we connect the points in the data frame curve using `geom_line()`.
+
+- We can change the axis labels and title by adding a `labs()` layer.
+
+
+
+```{r, chunk2.4a}
+ggplot(data = Water9, aes(x = p, y = posterior)) +
+  geom_line() +
+  labs(x = "probability of water", 
+       y = "posterior probability", 
+       title = "20 points")
+```
+
+
+Building a plot in layers allows you to easily add different types of  markers to the same plot. For example, the below code plots the prior, likelihood, and posterior over the same grid of 20 points.
+
+```{r, chunk2.4b}
+ggplot(data = Water9, aes(x = p)) +
+  geom_point(aes(y = posterior, color = "posterior")) +
+  geom_line(aes( y = posterior, color = "posterior")) +
+  geom_point(aes(y = prior, color = "prior")) +
+  geom_line(aes( y = prior, color = "prior")) +
+  geom_point(aes(y = likelihood, color = "likelihood")) +
+  geom_line(aes( y = likelihood, color = "likelihood")) +
+  labs(x = "probability of water", 
+       y = "posterior probability", 
+       title = "20-point grid")
+```
+
+Remarks:
+
+- We map the `p` column from `Water9` to the x-axis throughout each layer, so it can be defined in the base layer.
+
+- Since we want to plot different distributions on the y-axis, we must map the desired column to the y-coordinate system within each layer.
+
+
+
+#### R code 2.5
+
+R code chunk 2.5 shows two alternative unstandardized prior distributions to consider. My version of the code is given below. Feel free to explore the data frames to see the differences
+
+```{r, chunk2.5a}
+Water9a <-
+  data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %>% 
+  mutate(
+    unstd.prior = ifelse(p < 0.5, 0, 1),
+    prior = unstd.prior / sum(unstd.prior), # standardize the prior
+    likelihood =  dbinom(6, size = 9, prob = p),
+    unstd.posterior = likelihood * prior,
+    posterior = unstd.posterior / sum(unstd.posterior),
+    posterior.dens = posterior / 0.001
+  )
+
+Water9b <-
+  data_frame(p =  seq(from = 0, to = 1, length.out = 20)) %>% 
+  mutate(
+    unstd.prior =  exp(-5 * abs(p - 0.5)),
+    prior = unstd.prior / sum(unstd.prior), # standardize the prior
+    likelihood =  dbinom(6, size = 9, prob = p),
+    unstd.posterior = likelihood * prior,
+    posterior = unstd.posterior / sum(unstd.posterior),
+    posterior.dens = posterior / 0.001
+  )  
+```
+
+```{r ex2.5a, exercise = TRUE}
+# Explore the two new data frames
+```
+
+
+## 2.4.2 Quadratic approximation
+
+#### R code 2.6
+
+There's no need for a change to this code chunk.
+
+```{r chunk2.6}
+library(rethinking)
+globe.qa <- 
+  map(alist(w ~ dbinom(9, p),  # binomial likelihood
+            p ~ dunif(0, 1)),  # uniform prior
+      data = list(w = 6))
+
+# display summary of quadratic approximation
+precis(globe.qa)
+```
+
+
+
+#### R code 2.7
+
+Below is code to compare the analytic posterior distribution, Beta($w+1$, $n-w+1$), to the posterior obtained via quadratic approximation. 
+
+Note: the dashed line represents the quadratic approximation.
+
+```{r chunk2.7a, exercise = TRUE}
+# analytical calculation
+w <- 6
+n <- 9
+p  <- 0.67  # MAP (mean) value
+se <- 0.16  # StdDev from above
+
+
+analytic <- ggplot(data_frame(x = c(0, 1)), aes(x = x)) +
+  stat_function(fun = dbeta, 
+                args = list(shape1 = w + 1, shape2 = n - w + 1),
+                xlim = c(0, 1))
+
+# add the quadratic approximation
+analytic +
+  stat_function(fun = dnorm, 
+              args = list(mean = 0.67, sd = 0.16), 
+              xlim = c(0, 1),
+              linetype = 2)
+```
+
+Change the values of `w` and `n` to produce different panels of Figure 2.8. Be sure to update the MAP value first, otherwise your approximation will look increasingly worse, not better!
